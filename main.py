@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load your dataset
-df = pd.read_csv("BMW.csv")
+df = pd.read_csv("BMW_Updated.csv")
 
 # Set plot style
 sns.set(style="whitegrid")
@@ -19,12 +19,13 @@ plt.ylabel("Frequency")
 plt.tight_layout()
 plt.show()
 
+# Grouping total sales by year, region, and classification
 grouped = df.groupby(['Year', 'Region', 'Sales_Classification'])['Sales_Volume'].sum().reset_index()
 
-# Pivot to reshape the data
+# Pivot for stacked bar chart by region
 pivot_df = df.groupby(['Year', 'Region', 'Sales_Classification'])['Sales_Volume'].sum().unstack().fillna(0)
 
-# Plot a stacked bar chart for each region
+# Plot stacked sales classification bars per region
 for region in pivot_df.index.get_level_values('Region').unique():
     region_data = pivot_df.loc[pivot_df.index.get_level_values('Region') == region]
     region_data = region_data.droplevel('Region')
@@ -38,10 +39,10 @@ for region in pivot_df.index.get_level_values('Region').unique():
     plt.tight_layout()
     plt.show()
 
-# Convert to percentages
+# Normalize for percentage-based stacked bars
 percent_df = pivot_df.div(pivot_df.sum(axis=1), axis=0) * 100
 
-# Plot percentage stacked bars
+# Plot % stacked bar per region
 for region in percent_df.index.get_level_values('Region').unique():
     region_data = percent_df.loc[percent_df.index.get_level_values('Region') == region]
     region_data = region_data.droplevel('Region')
@@ -55,7 +56,7 @@ for region in percent_df.index.get_level_values('Region').unique():
     plt.tight_layout()
     plt.show()
 
-# Sales Classification Trend Over Years (All Regions)
+# Sales trend line chart (total across regions)
 trend_df = df.groupby(['Year', 'Sales_Classification'])['Sales_Volume'].sum().reset_index()
 
 plt.figure(figsize=(12, 6))
@@ -67,7 +68,7 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-# 3. Price Distribution by Model Tier
+# Heatmap of average price by region and model tier
 pivot_table = df.pivot_table(values='Price_USD', index='Region', columns='Model_Tier', aggfunc='mean')
 
 plt.figure(figsize=(10, 6))
@@ -78,7 +79,7 @@ plt.ylabel('Region')
 plt.tight_layout()
 plt.show()
 
-
+# Pie chart: Total sales by model tier
 tier_sales = df.groupby('Model_Tier')['Sales_Volume'].sum()
 
 plt.figure(figsize=(6, 6))
@@ -87,7 +88,7 @@ plt.title('Sales Volume Share by Model Tier')
 plt.tight_layout()
 plt.show()
 
-# 4. Average Mileage per Year by Fuel Type
+# Fuel Type distribution bar chart per region
 plt.figure(figsize=(16, 8))  # Wider + more height
 fuel_region_counts = df.groupby(['Region', 'Fuel_Type']).size().reset_index(name='Count')
 sns.barplot(data=fuel_region_counts, x='Region', y='Count', hue='Fuel_Type', palette='coolwarm')
@@ -95,14 +96,15 @@ sns.barplot(data=fuel_region_counts, x='Region', y='Count', hue='Fuel_Type', pal
 plt.title("Fuel Type Distribution Across Regions", fontsize=16)
 plt.xlabel("Region", fontsize=12)
 plt.ylabel("Number of Cars Sold", fontsize=12)
-
-# Fix label overlap
 plt.xticks(rotation=45, ha='right', fontsize=11)
-# Add count labels on top of each bar (optional enhancement)
+
+# Add value labels to each bar
 for container in plt.gca().containers:
     plt.bar_label(container, fmt='%.0f', label_type='edge', fontsize=9)
 plt.tight_layout()
 plt.show()
+
+# Pie chart for each region's fuel type breakdown
 regions = df['Region'].dropna().unique()
 for region in regions:
     region_data = df[df['Region'] == region]
@@ -113,16 +115,13 @@ for region in regions:
     plt.tight_layout()
     plt.show()
 
-
-
-# Bin engine sizes if not already binned
+# Binning engine size
 df['Engine_Bin'] = pd.cut(df['Engine_Size_L'], bins=[0, 2.0, 3.0, 4.0, 5.0, 6.0], 
                           labels=['<2L', '2-3L', '3-4L', '4-5L', '5-6L'])
 
-# Create the pivot table: average price by Engine Bin and Model Tier
+# Heatmap of average price by Engine Bin and Model Tier
 pivot = df.pivot_table(values='Price_USD', index='Engine_Bin', columns='Model_Tier', aggfunc='mean')
 
-# Plot the heatmap
 plt.figure(figsize=(10, 6))
 sns.heatmap(pivot, annot=True, fmt=".0f", cmap="cividis")
 plt.title("Average Price by Engine Size and Model Tier")
@@ -131,15 +130,34 @@ plt.ylabel("Engine Size Range")
 plt.tight_layout()
 plt.show()
 
+# ---- Individual Model Plots ----
+grouped = df.groupby(['Model', 'Region', 'Year'])['Sales_Volume'].sum().reset_index()
+models = grouped['Model'].unique()
 
-# 6. Count of Sales Classification
-plt.figure()
-sns.countplot(x='Sales_Classification', data=df, palette='Set3')
-plt.title("Count of Sales Classification")
-plt.xlabel("Sales Classification")
-plt.ylabel("Number of Cars")
-plt.tight_layout()
-plt.show()
+# Uncomment to activate per-model graphs
+# for model in models:
+#     model_data = grouped[grouped['Model'] == model]
+    
+#     # --- Grouped Bar Plot ---
+#     plt.figure(figsize=(14, 6))
+#     plt.subplot(1, 2, 1)
+#     sns.barplot(data=model_data, x='Year', y='Sales_Volume', hue='Region')
+#     plt.title(f"{model} - Sales Volume by Region and Year")
+#     plt.xlabel("Year")
+#     plt.ylabel("Sales Volume")
+#     plt.legend(title='Region', bbox_to_anchor=(1.05, 1), loc='upper left')
+#     plt.grid(True)
+
+    # --- Heatmap ---
+    plt.subplot(1, 2, 2)
+    pivot = model_data.pivot(index='Region', columns='Year', values='Sales_Volume')
+    sns.heatmap(pivot, annot=True, fmt='.0f', cmap='YlGnBu', linewidths=0.5)
+    plt.title(f"{model} - Sales Heatmap")
+    plt.xlabel("Year")
+    plt.ylabel("Region")
+
+    plt.tight_layout()
+    plt.show()
 
 # 7. Car Age vs Price
 plt.figure()
